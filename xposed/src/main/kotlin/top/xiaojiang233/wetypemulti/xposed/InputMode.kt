@@ -10,7 +10,18 @@ package top.xiaojiang233.wetypemulti.xposed
  * WeType's keyboard.
  */
 object InputMode {
-    enum class Mode { CN, EN, JA }
+    enum class Mode(val id: String, val shortLabel: String) {
+        CN("zh_CN", "中"),
+        EN("en_US", "英"),
+        JA("ja_JP", "あ"),
+        KANA12("ja_KANA12", "あ"),
+        KO("ko_KR", "한"),
+        RU("ru_RU", "РУ");
+
+        companion object {
+            fun fromId(id: String): Mode? = entries.firstOrNull { it.id == id }
+        }
+    }
 
     /** WeType's Chinese layout id to return to after English or Japanese (remembered when we leave it). */
     @Volatile private var cnLayout: Int? = null
@@ -26,15 +37,22 @@ object InputMode {
         Mode.CN -> "中"
         Mode.EN -> "英"
         Mode.JA -> ctl.label
+        Mode.KANA12 -> "あ"
+        Mode.KO -> "한"
+        Mode.RU -> "РУ"
     }
 
-    /** One step of the cycle: 中 -> 英 -> あ -> 中. Returns the new mode. */
+    /** One step of the cycle according to enabled keyboards list in config. Returns the new mode. */
     fun cycle(ctl: ImeController): Mode {
-        val next = when (current(ctl)) {
-            Mode.CN -> Mode.EN
-            Mode.EN -> Mode.JA
-            Mode.JA -> Mode.CN
-        }
+        val enabledList = runCatching {
+            val f = java.io.File(ctl.service?.filesDir ?: java.io.File("/data/data/com.tencent.wetype/files"), "config.json")
+            if (f.exists()) top.xiaojiang233.wetypemulti.common.config.MultiLanguageConfig.fromJson(f.readText()).enabledKeyboardIds else null
+        }.getOrNull() ?: listOf("zh_CN", "en_US", "ja_JP")
+
+        val cycleModes = enabledList.mapNotNull { Mode.fromId(it) }.ifEmpty { listOf(Mode.CN, Mode.EN, Mode.JA) }
+        val cur = current(ctl)
+        val idx = cycleModes.indexOf(cur)
+        val next = if (idx == -1 || idx == cycleModes.lastIndex) cycleModes.first() else cycleModes[idx + 1]
         set(ctl, next)
         return next
     }
@@ -55,8 +73,16 @@ object InputMode {
                 ctl.deactivate()
                 if (k != null) k.switchLayout(k.englishLayoutId())
             }
-            Mode.JA -> {
+            Mode.JA, Mode.KANA12 -> {
                 ctl.activate("ja")
+                if (k != null) k.switchLayout(k.chineseLayoutId())
+            }
+            Mode.KO -> {
+                ctl.activate("ko")
+                if (k != null) k.switchLayout(k.chineseLayoutId())
+            }
+            Mode.RU -> {
+                ctl.activate("ru")
                 if (k != null) k.switchLayout(k.chineseLayoutId())
             }
         }

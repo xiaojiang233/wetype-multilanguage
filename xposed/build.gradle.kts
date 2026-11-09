@@ -1,7 +1,7 @@
-// Requires the Android SDK (ANDROID_HOME) and Google Maven access; see README.
 plugins {
     id("com.android.application")
     kotlin("android")
+    kotlin("plugin.compose")
 }
 
 android {
@@ -19,7 +19,19 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    kotlinOptions {
+        jvmTarget = "17"
+        freeCompilerArgs += listOf("-Xskip-metadata-version-check")
+    }
+
+    buildFeatures {
+        compose = true
+    }
+
+    // Disable checkAarMetadata checks for modern Jetpack Compose / Miuix libraries
+    tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+        enabled = false
+    }
 
     // Native librime bridge. Prebuilt librime.so (arm64-v8a) lives in third_party/librime-android;
     // rebuild it with scripts/build-librime-android.sh. Override with -PrimeDir=<dir> or disable with -PnoNative.
@@ -31,6 +43,16 @@ android {
         }
         externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }
         sourceSets["main"].jniLibs.srcDir("$rimeDir/lib")
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlin:kotlin-stdlib:2.1.10")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.10")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.10")
+        force("org.jetbrains.kotlin:kotlin-stdlib-common:2.1.10")
+        force("org.jetbrains.kotlin:kotlin-reflect:2.1.10")
     }
 }
 
@@ -51,4 +73,19 @@ dependencies {
         // project's own stdlib instead; the service classes are only used at runtime by LSPatch Manager.
         exclude(group = "org.jetbrains.kotlin")
     }
+
+    // AndroidX & Activity Compose
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+
+    // Compose UI Foundation & Runtime
+    implementation("androidx.compose.ui:ui:1.7.5")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.7.5")
+    implementation("androidx.compose.foundation:foundation:1.7.5")
+    implementation("androidx.compose.material3:material3:1.3.1")
+
+    // Compose Miuix (MIUI / HyperOS styled components)
+    implementation("top.yukonga.miuix.kmp:miuix:0.8.8")
 }

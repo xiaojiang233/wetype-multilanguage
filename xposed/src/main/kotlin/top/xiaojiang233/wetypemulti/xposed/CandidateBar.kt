@@ -8,21 +8,21 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 import top.xiaojiang233.wetypemulti.common.engine.CandidateLimits
-import top.xiaojiang233.wetypemulti.common.engine.Context
+import top.xiaojiang233.wetypemulti.common.engine.Context as EngineContext
 
 /** Minimal candidate strip drawn into the IME window, independent of WeType's own views. */
 object CandidateBar {
     private var bar: LinearLayout? = null
 
     /** Safe from any thread: views are only touched on the main looper; failures never reach the IME. */
-    fun update(svc: InputMethodService?, ctx: Context?, suggestions: List<String>?) {
+    fun update(svc: InputMethodService?, ctx: EngineContext?, suggestions: List<String>?) {
         svc ?: return
         val main = android.os.Looper.getMainLooper()
         if (android.os.Looper.myLooper() === main) runCatching { render(svc, ctx, suggestions) }
         else android.os.Handler(main).post { runCatching { render(svc, ctx, suggestions) } }
     }
 
-    private fun render(svc: InputMethodService, ctx: Context?, suggestions: List<String>?) {
+    private fun render(svc: InputMethodService, ctx: EngineContext?, suggestions: List<String>?) {
         val b = bar ?: LinearLayout(svc).also { l ->
             l.orientation = LinearLayout.HORIZONTAL
             l.setBackgroundColor(Color.parseColor("#F2F2F2"))

@@ -1,0 +1,65 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54">
+        <!-- Key surface background -->
+        <path
+            android:fillColor="#1AFFFFFF"
+            android:strokeColor="#40FFFFFF"
+            android:strokeWidth="1.5"
+            android:pathData="M32,24 L76,24 A8,8 0 0,1 84,32 L84,76 A8,8 0 0,1 76,84 L32,84 A8,8 0 0,1 24,76 L24,32 A8,8 0 0,1 32,24 Z" />
+
+        <!-- Globe Outer Circle -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.2"
+            android:strokeLineCap="round"
+            android:pathData="M54,34 A20,20 0 1,0 54,74 A20,20 0 1,0 54,34 Z" />
+
+        <!-- Globe Equator -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.8"
+            android:pathData="M34,54 L74,54" />
+
+        <!-- Globe Vertical Meridian -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.8"
+            android:pathData="M54,34 C44,40 44,68 54,74 C64,68 64,40 54,34 Z" />
+
+        <!-- Globe Latitudes -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#B3FFFFFF"
+            android:strokeWidth="1.2"
+            android:pathData="M38,44 L70,44 M38,64 L70,64" />
+
+        <!-- Center Badge Pill -->
+        <path
+            android:fillColor="#056B37"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.8"
+            android:pathData="M42,47 L66,47 A7,7 0 0,1 73,54 A7,7 0 0,1 66,61 L42,61 A7,7 0 0,1 35,54 A7,7 0 0,1 42,47 Z" />
+
+        <!-- Letter 'A' icon in badge -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M60.5,50.5 L63.5,50.5 L66.5,57.5 L64.8,57.5 L64.1,55.8 L61.1,55.8 L60.4,57.5 L58.7,57.5 Z M61.6,54.5 L63.6,54.5 L62.6,52 Z" />
+
+        <!-- Japanese 'あ' stylized stroke / dot -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.5"
+            android:strokeLineCap="round"
+            android:pathData="M43,51.5 L49,51.5 M46,49.5 L46,58.5 M44,54 C44,57 48,58 48.5,55 C49,53 47,52 45,53" />
+    </group>
+</vector>
