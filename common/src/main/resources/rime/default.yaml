@@ -1,0 +1,31 @@
+# Minimal shared default config for the embedded Rime (no rime-data is shipped).
+config_version: "0.1"
+
+schema_list:
+  - schema: japanese
+
+switcher:
+  caption: 方案
+  hotkeys: []
+  save_options: [full_shape]
+  fold_options: false
+
+menu:
+  page_size: 50
+
+ascii_composer:
+  good_old_caps_lock: true
+  switch_key:
+    Shift_L: commit_code
+    Shift_R: noop
+    Control_L: noop
+    Control_R: noop
+    Caps_Lock: clear
+    Eisu_toggle: clear
+
+key_binder:
+  bindings: []
+
+punctuator:
+  half_shape: {}
+  full_shape: {}

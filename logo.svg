@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 240" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient for Icon -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07C160" />
+      <stop offset="100%" stop-color="#069B4E" />
+    </linearGradient>
+
+    <!-- Key Surface Gradient -->
+    <linearGradient id="keyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.05" />
+    </linearGradient>
+
+    <!-- Accent Gradient -->
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#07C160" />
+      <stop offset="100%" stop-color="#10D571" />
+    </linearGradient>
+
+    <!-- Soft Drop Shadow -->
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#07C160" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Left: App Icon -->
+  <g transform="translate(40, 24)">
+    <!-- Base App Rounded Keypad -->
+    <rect x="0" y="0" width="192" height="192" rx="44" fill="url(#bgGrad)" filter="url(#shadow)" />
+
+    <!-- Glass Reflection Highlight -->
+    <rect x="8" y="8" width="176" height="176" rx="36" fill="url(#keyGrad)" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="2" />
+
+    <!-- Keyboard Key Grid Silhouette (Subtle) -->
+    <g opacity="0.15" fill="#FFFFFF">
+      <rect x="28" y="32" width="28" height="24" rx="6" />
+      <rect x="62" y="32" width="28" height="24" rx="6" />
+      <rect x="96" y="32" width="28" height="24" rx="6" />
+      <rect x="130" y="32" width="34" height="24" rx="6" />
+      <rect x="28" y="62" width="34" height="24" rx="6" />
+      <rect x="68" y="62" width="28" height="24" rx="6" />
+      <rect x="102" y="62" width="28" height="24" rx="6" />
+      <rect x="136" y="62" width="28" height="24" rx="6" />
+    </g>
+
+    <!-- Central Globe & Multi-Language Glyphs -->
+    <g transform="translate(96, 96)">
+      <!-- Globe Meridian Line -->
+      <circle cx="0" cy="0" r="54" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" />
+      <ellipse cx="0" cy="0" rx="26" ry="54" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-dasharray="120 8" />
+      <line x1="-54" y1="0" x2="54" y2="0" stroke="#FFFFFF" stroke-width="3.5" />
+      <line x1="-42" y1="-26" x2="42" y2="-26" stroke="#FFFFFF" stroke-width="2.5" opacity="0.7" />
+      <line x1="-42" y1="26" x2="42" y2="26" stroke="#FFFFFF" stroke-width="2.5" opacity="0.7" />
+
+      <!-- Center Pill Badge: "あ" & "A" -->
+      <rect x="-38" y="-20" width="76" height="40" rx="20" fill="#056b37" fill-opacity="0.92" stroke="#FFFFFF" stroke-width="2.5" />
+      <text x="-16" y="7" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans CJK JP', 'Hiragino Sans', sans-serif" font-size="22" font-weight="800" fill="#FFFFFF" text-anchor="middle">あ</text>
+      <text x="3" y="7" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="300" fill="#FFFFFF" opacity="0.6" text-anchor="middle">/</text>
+      <text x="20" y="7" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="800" fill="#10D571" text-anchor="middle">A</text>
+    </g>
+  </g>
+
+  <!-- Right: Typography & Brand -->
+  <g transform="translate(268, 64)">
+    <!-- Title -->
+    <text x="0" y="44" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, sans-serif" font-size="44" font-weight="800" letter-spacing="-0.5" fill="#1A1A1A">
+      WeType <tspan fill="url(#accentGrad)">MultiLanguage</tspan>
+    </text>
+
+    <!-- Subtitle / Tagline -->
+    <text x="2" y="86" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="19" font-weight="500" fill="#666666" letter-spacing="0.2">
+      Multi-Language Input Extension for Android IME
+    </text>
+
+    <!-- Feature Badges -->
+    <g transform="translate(2, 110)">
+      <!-- Badge 1: Rime Engine -->
+      <rect x="0" y="0" width="124" height="28" rx="6" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1.2" />
+      <circle cx="14" cy="14" r="4" fill="#07C160" />
+      <text x="26" y="19" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#166534">Rime Engine</text>
+
+      <!-- Badge 2: Japanese Romaji -->
+      <rect x="134" y="0" width="134" height="28" rx="6" fill="#F3F4F6" stroke="#E5E7EB" stroke-width="1.2" />
+      <text x="201" y="19" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">日本語・ローマ字</text>
+
+      <!-- Badge 3: LSPosed -->
+      <rect x="278" y="0" width="96" height="28" rx="6" fill="#F3F4F6" stroke="#E5E7EB" stroke-width="1.2" />
+      <text x="326" y="19" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">Xposed API</text>
+
+      <!-- Badge 4: Smart Bigram -->
+      <rect x="384" y="0" width="120" height="28" rx="6" fill="#F3F4F6" stroke="#E5E7EB" stroke-width="1.2" />
+      <text x="444" y="19" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">Smart Predict</text>
+    </g>
+  </g>
+</svg>

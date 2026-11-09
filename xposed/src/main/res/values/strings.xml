@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="xposed_description">Adds Japanese (and more) input to WeType using an embedded Rime-style engine</string>
+</resources>

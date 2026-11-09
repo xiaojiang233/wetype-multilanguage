@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      The entry point is the libxposed one: META-INF/xposed/{java_init.list,module.prop,scope.list}
+      (src/main/resources/META-INF). LSPatch Manager does not list a module without the legacy
+      xposedmodule / xposedminversion meta-data (it shows the "API" badge from xposedminversion),
+      so both stay here even though the code uses the modern API. Found on device: a module without
+      them is missing from "从已安装的模块添加" (see docs/japanese-input-v23-notes.md).
+    -->
+    <!-- Package visibility (Android 11+): without this, the module's provider call into WeType is filtered
+         (AppsFilter logs "<module> -> com.tencent.wetype BLOCKED") and LSPatch Manager returns no modules. -->
+    <queries>
+        <package android:name="com.tencent.wetype" />
+    </queries>
+
+    <application
+        android:label="WeType Multi-language"
+        android:description="@string/xposed_description"
+        android:allowBackup="false">
+        <meta-data android:name="xposedmodule" android:value="true" />
+        <meta-data android:name="xposedminversion" android:value="101" />
+    </application>
+</manifest>

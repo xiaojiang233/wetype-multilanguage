@@ -1,0 +1,7 @@
+{
+  "targetPackages": ["com.tencent.wetype"],
+  "defaultLanguage": "ja",
+  "switchKey": { "keyCode": 62, "ctrl": true },
+  "extraHooks": [],
+  "sync": { "backend": "none", "path": "", "url": "", "user": "", "password": "", "passphrase": "" }
+}

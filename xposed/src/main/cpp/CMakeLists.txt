@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.22)
+project(wetype_rime_jni CXX)
+
+# librime prebuilt: third_party/librime-android (see scripts/build-librime-android.sh)
+set(RIME_DIR "" CACHE PATH "librime prebuilt directory")
+add_library(rime SHARED IMPORTED)
+set_target_properties(rime PROPERTIES IMPORTED_LOCATION ${RIME_DIR}/lib/${ANDROID_ABI}/librime.so)
+add_library(wetype_rime_jni SHARED rime_jni.cpp)
+target_include_directories(wetype_rime_jni PRIVATE ${RIME_DIR}/include)
+target_link_libraries(wetype_rime_jni rime log)

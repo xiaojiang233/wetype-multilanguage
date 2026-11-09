@@ -1,0 +1,102 @@
+{
+  "versionCode": 58201,
+  "note": "WeType 4.0.0 (versionCode 58201). Two code shapes exist: the base APK (what an LSPatch-patched install runs when the hot update does not load) and the Tinker hot-update patch. Names differ between them: the keyboard view accessor is v1 in base and x1 in the patch, and the refresh method is q2 in base and s2 in the patch. Both use xc.* callback interfaces. Each role lists both; the resolver keeps the first one that exists. Verified with tools/mapping-check against the phone's base APK (backup) and the hot-update patch. Edit this file when WeType updates; see docs/wetype-mapping.md.",
+  "roles": {
+    "wxhld.api": {
+      "classes": ["com.tencent.wxhld.WxhldApi"]
+    },
+    "wxhld.select": {
+      "classes": ["com.tencent.wxhld.WxhldApi"],
+      "members": [
+        {"names": ["select_candidate"],
+         "params": ["long", "java.lang.String", "[B", "java.lang.String", "[B", "[Lcom.tencent.wxhld.info.DisplayCandidates;", "com.tencent.wxhld.info.DisplayCandidates"],
+         "returns": "void",
+         "args": {"candidate": 1, "candidateId": 2, "followUp": 3, "followUpId": 4, "candidates": 5, "selected": 6}}
+      ]
+    },
+    "wxhld.input": {
+      "classes": ["com.tencent.wxhld.WxhldApi"],
+      "members": [
+        {"names": ["process_input"],
+         "params": ["long", "java.lang.String", "[B"],
+         "returns": "void",
+         "args": {"session": 0, "key": 1, "aux": 2}}
+      ]
+    },
+    "keyboard.chinese": {
+      "classes": ["com.tencent.wetype.plugin.hld.keyboard.t"],
+      "enumConstant": "d"
+    },
+    "keyboard.english": {
+      "classes": ["com.tencent.wetype.plugin.hld.keyboard.t"],
+      "enumConstant": "l"
+    },
+    "layout.model": {
+      "classes": ["com.tencent.wetype.plugin.hld.model.N"]
+    },
+    "layout.switch": {
+      "classes": ["com.tencent.wetype.plugin.hld.model.N"],
+      "members": [
+        {"names": ["l3"], "params": ["int", "android.os.Bundle"]},
+        {"names": ["l3"], "params": ["int", "android.os.Bundle", "boolean"]}
+      ]
+    },
+    "layout.current": {
+      "classes": ["com.tencent.wetype.plugin.hld.model.N"],
+      "members": [
+        {"names": ["u0"], "params": [], "returns": "int"}
+      ]
+    },
+    "layout.reader": {
+      "classes": ["com.tencent.wetype.plugin.hld.model.s0"],
+      "members": [
+        {"names": ["a"], "params": ["android.content.Context", "java.lang.String"],
+         "returns": "com.tencent.wetype.plugin.hld.keyboard.selfdraw.bean.KeyboardOriginData"}
+      ]
+    },
+    "layout.cache.origin": {
+      "classes": ["com.tencent.wetype.plugin.hld.model.s0"],
+      "members": [
+        {"kind": "field", "names": ["b"], "returns": "java.util.Map", "isStatic": true}
+      ]
+    },
+    "layout.cache.data": {
+      "classes": ["com.tencent.wetype.plugin.hld.model.s0"],
+      "members": [
+        {"kind": "field", "names": ["c"], "returns": "java.util.Map", "isStatic": true}
+      ]
+    },
+    "layout.view": {
+      "classes": ["com.tencent.wetype.plugin.hld.keyboard.selfdraw.o"],
+      "members": [
+        {"names": ["x1"], "params": [], "returns": "com.tencent.wetype.plugin.hld.keyboard.selfdraw.bean.KeyboardData"},
+        {"names": ["v1"], "params": [], "returns": "com.tencent.wetype.plugin.hld.keyboard.selfdraw.bean.KeyboardData"}
+      ]
+    },
+    "layout.view.refresh": {
+      "classes": ["com.tencent.wetype.plugin.hld.keyboard.selfdraw.o"],
+      "members": [
+        {"names": ["s2"], "params": ["xc.l", "xc.a"], "returns": "void"},
+        {"names": ["q2"], "params": ["xc.l", "xc.a"], "returns": "void"}
+      ]
+    },
+    "popup.menu": {
+      "classes": ["com.tencent.wetype.plugin.hld.utils.v0"],
+      "members": [
+        {"names": ["g"], "params": ["com.tencent.wetype.plugin.hld.keyboard.selfdraw.j"]}
+      ]
+    },
+    "popup.item": {
+      "classes": ["com.tencent.wetype.plugin.hld.utils.v0$f"],
+      "members": [
+        {"names": ["invoke"], "params": [], "allowMultiple": true}
+      ]
+    },
+    "context.holder": {
+      "classes": ["e7.u"],
+      "members": [
+        {"kind": "field", "names": ["a"], "isStatic": true}
+      ]
+    }
+  }
+}
