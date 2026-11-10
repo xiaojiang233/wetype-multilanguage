@@ -16,11 +16,17 @@ enum class KeyLayout { QWERTY }
 
 object Languages {
     val JAPANESE = Language("ja", "日本語", "japanese", "あ")
+    val KOREAN = Language("ko", "한국어", "korean", "한")
+    val RUSSIAN = Language("ru", "Русский", "russian", "РУ")
 
     private val registry = linkedMapOf(JAPANESE.id to JAPANESE)
 
     fun all(): List<Language> = registry.values.toList()
-    fun byId(id: String): Language? = registry[id]
+    fun byId(id: String): Language? = registry[id] ?: when (id) {
+        "ko" -> KOREAN
+        "ru" -> RUSSIAN
+        else -> null
+    }
 
     /** Register an additional language (e.g. Korean, Russian) without touching core code. */
     fun register(language: Language) { registry[language.id] = language }

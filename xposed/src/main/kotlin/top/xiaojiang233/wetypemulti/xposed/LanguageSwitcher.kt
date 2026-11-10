@@ -211,14 +211,17 @@ object LanguageSwitcher {
         layoutOver(g, cell)
     }
 
-    /** The long vowel key: only while Japanese is on, only on S2ChineseQwertyKeyboard*, where the slot is found. */
+    /** The overlay key: only while an active profile defines an overlayKeySlot, and enabled in config. */
     private fun placeLongVowel(decor: FrameLayout, g: GlobeView) {
         val ctl = g.ctl
-        val hit = if (ctl != null && ctl.active) vowelLocator.locate(decor) else null
+        val slot = ctl?.currentProfile?.overlayKeySlot
+        val config = ConfigRepository.get()
+        val enabled = ctl != null && ctl.active && slot != null && config.longVowelKeyEnabled
+        val hit = if (enabled) vowelLocator.locate(decor) else null
         val kbName = hit?.view?.javaClass?.simpleName ?: ""
         if (hit != null && !kbName.startsWith("S2ChineseQwertyKeyboard")) {
             vowel?.visibility = View.GONE
-            log("vowel", "ignoring ${JaLayoutRules.LONG_VOWEL_SLOT} in non-Chinese-QWERTY keyboard ($kbName); hidden")
+            log("vowel", "ignoring $slot in non-Chinese-QWERTY keyboard ($kbName); hidden")
             return
         }
         val at = hit?.let {
@@ -228,9 +231,9 @@ object LanguageSwitcher {
         val cell = at?.let { cellInDecor(decor, it) }
         if (at == null || cell == null) {
             vowel?.visibility = View.GONE
-            if (ctl != null && ctl.active) {
-                log("vowel", if (at == null) "no valid ${JaLayoutRules.LONG_VOWEL_SLOT} slot in the shown keyboard; long vowel key hidden"
-                else "the slot is outside the keyboard; long vowel key hidden")
+            if (ctl != null && ctl.active && slot != null && config.longVowelKeyEnabled) {
+                log("vowel", if (at == null) "no valid $slot slot in the shown keyboard; overlay key hidden"
+                else "the slot is outside the keyboard; overlay key hidden")
             }
             return
         }

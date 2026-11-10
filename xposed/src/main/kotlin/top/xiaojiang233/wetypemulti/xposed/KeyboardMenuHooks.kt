@@ -1,22 +1,12 @@
 package top.xiaojiang233.wetypemulti.xposed
 
 import android.os.Bundle
+import top.xiaojiang233.wetypemulti.common.keyboard.KeyboardProfileRegistry
 import java.lang.reflect.Proxy
 
 /**
- * Glue to WeType 4.0.0's keyboard switcher. Names come from the hot-updated dex that the phone actually
- * runs (see docs/wetype-live-hotupdate.md), not from the base APK in apk/, which differs.
- *
- *  - `model.N.l3(int layoutId, Bundle)` switches WeType's layout (live build). It forwards to
- *    `m3(id, bundle, true)`. The base APK has a three-argument `l3`; [switchLayout] accepts either.
- *  - Layout ids are the `value`s of the `keyboard.t` constants: `d` = ChineseQwerty (全键盘, 1),
- *    `l` = EnglishQwerty (英文, 100). Same in the live build.
- *  - `model.N.u0()` returns the layout WeType is showing now ([layoutId]).
- *  - The long-press popup (`utils.v0.g`) gets a 日语 item before 设置. Its action goes through [InputMode].
- *  - Tapping one of WeType's own popup items (click class `utils.v0$f`) while Japanese is on turns Japanese
- *    off, since WeType moved to another layout on the user's own choice.
- *
- * A missing class or method disables only that part and logs it; nothing else breaks.
+ * Glue to WeType 4.0.0's keyboard switcher and long-press popup menu.
+ * Dynamically injects all enabled multi-language keyboards into WeType's popup menu.
  */
 class KeyboardMenuHooks(private val ctl: ImeController, private val cl: ClassLoader) {
     private val pkg = "com.tencent.wetype.plugin.hld"
@@ -31,10 +21,9 @@ class KeyboardMenuHooks(private val ctl: ImeController, private val cl: ClassLoa
     fun install() {
         val v0 = runCatching { XposedCompat.findClass("$pkg.utils.v0", cl) }.getOrNull() ?: return
         current = this
-        runCatching { installOn(v0) }.onFailure { log("install failed (WeType build mismatch?): $it") }
+        runCatching { installOn(v0) }.onFailure { log("install failed: $it") }
     }
 
-    /** Separated so a renamed internal class never crashes the host; it only disables that hook. */
     private fun installOn(v0: Class<*>) {
         val n = XposedCompat.findClass("$pkg.model.N", cl)
 
@@ -42,32 +31,54 @@ class KeyboardMenuHooks(private val ctl: ImeController, private val cl: ClassLoa
             runCatching {
                 @Suppress("UNCHECKED_CAST") val list = ArrayList(p.result as List<Any>)
                 if (list.isNotEmpty()) {
-                    list.add(maxOf(0, list.size - 1), japaneseItem()) // before the trailing 设置 item
+                    val items = buildProfileMenuItems()
+                    val insertIndex = maxOf(0, list.size - 1)
+                    list.addAll(insertIndex, items)
                     p.result = list
                 }
             }.onFailure { log("popup item: $it") }
         })
-        // A layout switch we did not start: leave Japanese, unless it is the Chinese layout Japanese itself
-        // runs on (WeType may re-select its last layout by itself), or a candidate panel layout.
+
         val l3Hooked = XposedCompat.hookAllMethods(n, "l3", before = { p ->
             val target = p.args.getOrNull(0) as? Int
-            if (!selfSwitch && ctl.active && target != null && !isAllowedJapaneseLayout(target)) leaveJapanese("layout $target")
+            if (!selfSwitch && ctl.active && target != null && !isAllowedHostLayout(target)) {
+                onHostLayoutChanged("layout $target")
+            }
         })
+
         val itemHooked = runCatching {
             val itemCls = XposedCompat.findClass("$pkg.utils.v0\$f", cl)
             logLiveSignatures(n, itemCls)
             XposedCompat.hookAllMethods(itemCls, "invoke", before = {
-                if (!selfSwitch && ctl.active) leaveJapanese("WeType popup item")
+                if (!selfSwitch && ctl.active) onHostLayoutChanged("WeType popup item")
             })
         }.getOrDefault(0)
+
         log("keyboard menu hooks installed (g matched $gHooked, l3 matched $l3Hooked, popup item matched $itemHooked)")
     }
 
-    /**
-     * One-time log of the live signatures this module depends on, so a device log shows what the running
-     * build really has. Reflection only: no static initialisers run here (touching model.N before the
-     * context is set crashes; see [switchLayout]).
-     */
+    private fun buildProfileMenuItems(): List<Any> {
+        val enabledIds = ConfigRepository.get().enabledKeyboardIds
+        val cCls = runCatching { XposedCompat.findClass("$pkg.floatview.C", cl) }.getOrNull() ?: return emptyList()
+        val action = runCatching { XposedCompat.findClass("xc.a", cl) }.getOrNull() ?: return emptyList()
+        val unit = runCatching { XposedCompat.getStaticObjectField(XposedCompat.findClass("nc.F", cl), "a") }.getOrNull() ?: return emptyList()
+        val icon = runCatching { XposedCompat.getStaticIntField(XposedCompat.findClass("$pkg.r", cl), "icon_quick_switch_chinese") }.getOrDefault(0)
+
+        return enabledIds.mapNotNull { id ->
+            val profile = KeyboardProfileRegistry.findById(id) ?: return@mapNotNull null
+            if (profile.isHostHandled) return@mapNotNull null
+
+            val click = Proxy.newProxyInstance(cl, arrayOf(action)) { _, m, _ ->
+                if (m.name == "invoke") {
+                    log("menu item clicked: ${profile.info.languageName} (${profile.id})")
+                    InputMode.set(ctl, profile)
+                }
+                unit
+            }
+            XposedCompat.newInstance(cCls, "wtm_${profile.id}", "", false, profile.info.languageName, icon, false, false, click)
+        }
+    }
+
     private fun logLiveSignatures(n: Class<*>, itemCls: Class<*>) {
         val names = setOf("l3", "m3", "p3", "u0")
         n.declaredMethods.filter { it.name in names }.sortedBy { it.name }.forEach { m ->
@@ -76,26 +87,22 @@ class KeyboardMenuHooks(private val ctl: ImeController, private val cl: ClassLoa
         itemCls.declaredMethods.filter { it.name == "invoke" }.forEach { m ->
             log("live utils.v0\$f.invoke(${m.parameterTypes.joinToString { it.simpleName }}): ${m.returnType.simpleName}")
         }
-        var c: ClassLoader? = cl
-        val chain = ArrayList<String>()
-        while (c != null && chain.size < 6) { chain.add(c.javaClass.simpleName); c = c.parent }
-        log("loader chain for keyboard hooks: ${chain.joinToString(" -> ")}")
     }
 
     /** The layout WeType is showing right now, or null when it cannot be read. */
     fun layoutId(): Int? = runCatching { callN("u0") as Int }.onFailure { log("layoutId: $it") }.getOrNull()
 
-    /** Chinese QWERTY (全键盘). Read from WeType so a renumbered build still works; 1 is the 4.0.0 value. */
+    /** Chinese QWERTY (全键盘). */
     fun chineseLayoutId(): Int = keyboardId("d", 1)
 
-    /** English QWERTY (英文). 100 is the 4.0.0 value. */
+    /** English QWERTY (英文). */
     fun englishLayoutId(): Int = keyboardId("l", 100)
 
-    /** More-candidates panel (展开候选栏). 106 is the WeType 4.0.0 value. */
+    /** More-candidates panel (展开候选栏). */
     fun candidateLayoutId(): Int = 106
 
-    /** Layouts that Japanese is allowed to run on without deactivating: Chinese QWERTY and candidate panels. */
-    fun isAllowedJapaneseLayout(target: Int): Boolean =
+    /** Layouts that a multi-language profile is allowed to run on without deactivating. */
+    fun isAllowedHostLayout(target: Int): Boolean =
         target == chineseLayoutId() || target == candidateLayoutId()
 
     private fun keyboardId(constant: String, fallback: Int): Int = runCatching {
@@ -103,14 +110,7 @@ class KeyboardMenuHooks(private val ctl: ImeController, private val cl: ClassLoa
         XposedCompat.callMethod(XposedCompat.getStaticObjectField(t, constant) as Any, "c") as Int
     }.getOrDefault(fallback)
 
-    /**
-     * Switch WeType to [layoutId] (`model.N.l3`, main thread only). The live build has `l3(int, Bundle)`; the
-     * base APK has `l3(int, Bundle, boolean)`. Whichever this build declares is called, and the layout WeType
-     * reports afterwards is logged so a device test shows whether the switch took effect.
-     */
     fun switchLayout(layoutId: Int): Boolean = runCatching {
-        // WeType's layout code reads a Context from e7.u.a. Set it from the live IME service first, otherwise
-        // touching model.N throws in its static initialiser (MMKV needs a Context).
         ctl.service?.applicationContext?.let {
             XposedCompat.setStaticObjectField(XposedCompat.findClass("e7.u", cl), "a", it)
         }
@@ -130,7 +130,7 @@ class KeyboardMenuHooks(private val ctl: ImeController, private val cl: ClassLoa
         } finally {
             selfSwitch = false
         }
-        log("layout -> $layoutId via l3(${m.parameterTypes.joinToString { it.simpleName }}), now showing ${layoutId()}")
+        log("layout -> $layoutId via l3, now showing ${layoutId()}")
         true
     }.onFailure { log("switchLayout($layoutId) failed: $it") }.getOrDefault(false)
 
@@ -141,23 +141,8 @@ class KeyboardMenuHooks(private val ctl: ImeController, private val cl: ClassLoa
         return XposedCompat.callMethod(inst, name, *args)
     }
 
-    private fun japaneseItem(): Any {
-        val cCls = XposedCompat.findClass("$pkg.floatview.C", cl)
-        val action = XposedCompat.findClass("xc.a", cl)
-        val unit = XposedCompat.getStaticObjectField(XposedCompat.findClass("nc.F", cl), "a")
-        val click = Proxy.newProxyInstance(cl, arrayOf(action)) { _, m, _ ->
-            if (m.name == "invoke") {
-                log("日语 item clicked")
-                InputMode.set(ctl, InputMode.Mode.JA)
-            }
-            unit
-        }
-        val icon = XposedCompat.getStaticIntField(XposedCompat.findClass("$pkg.r", cl), "icon_quick_switch_chinese")
-        return XposedCompat.newInstance(cCls, "wtm_japanese", "", false, "日语", icon, false, false, click)
-    }
-
-    private fun leaveJapanese(reason: String) {
-        log("leaving Japanese: $reason")
+    private fun onHostLayoutChanged(reason: String) {
+        log("host layout changed: $reason")
         ctl.deactivate()
         LanguageSwitcher.refresh()
     }

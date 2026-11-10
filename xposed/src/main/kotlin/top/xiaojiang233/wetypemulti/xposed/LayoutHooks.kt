@@ -3,49 +3,39 @@ package top.xiaojiang233.wetypemulti.xposed
 import android.content.res.AssetManager
 import android.view.View
 import android.view.ViewGroup
-import top.xiaojiang233.wetypemulti.common.layout.JaLayoutRewriter
-import top.xiaojiang233.wetypemulti.common.layout.JaLayoutRules
+import top.xiaojiang233.wetypemulti.common.keyboard.KeyboardProfile
+import top.xiaojiang233.wetypemulti.common.layout.LayoutRewriter
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.lang.reflect.Proxy
 
 /**
- * Serves a Japanese variant of WeType's Chinese QWERTY layout while Japanese mode is on.
- *
- * WeType reads each layout as `model.s0.a(Context, String)`: `context.getAssets().open(path)`, then Gson into
- * `KeyboardOriginData`. The parsed result is cached in the static maps `model.s0.b` and `model.s0.c`. Each keyboard
- * view reads the layout for its own keyboard type (`x1()` calls `model.s0.b(context, getKeyboardType(), mode)`), so
- * a mode change needs three steps:
- *  1. [invalidate] clears the static caches,
- *  2. [refresh] finds the Chinese keyboard view in the IME window and runs its refresh method again. That reads the
- *     layout through the accessor, which reaches `model.s0.a` and therefore the hook below,
- *  3. the `AssetManager.open` hook returns the rewritten JSON while Japanese is on.
- *
- * Names differ between the base APK and the hot update (see `assets/wetype-mapping.json`), so each lookup tries
- * both. Installed once per process, on the IME's class loader. Every failure is logged, never thrown.
+ * Dynamically rewrites WeType layout JSON files on-the-fly according to the active [KeyboardProfile].
+ * Completely decoupled from specific languages; patches and target paths are defined by the active profile.
  */
 object LayoutHooks {
     @Volatile private var loader: ClassLoader? = null
-    @Volatile private var japaneseOn: (() -> Boolean)? = null
+    @Volatile private var activeProfile: (() -> KeyboardProfile?)? = null
     @Volatile private var windowRoot: (() -> View?)? = null
 
     /**
-     * [japaneseOn] answers whether Japanese mode is on right now; [cl] is the IME's class loader; [windowRoot]
-     * returns the IME window's root view (used to find the keyboard views).
+     * [activeProfile] returns the currently active keyboard profile (or null if host handles input directly).
+     * [cl] is the IME's class loader; [windowRoot] returns the IME window's root view.
      */
-    fun install(japaneseOn: () -> Boolean, cl: ClassLoader, windowRoot: () -> View?) {
+    fun install(activeProfile: () -> KeyboardProfile?, cl: ClassLoader, windowRoot: () -> View?) {
         if (loader != null) return
         loader = cl
-        this.japaneseOn = japaneseOn
+        this.activeProfile = activeProfile
         this.windowRoot = windowRoot
         val opened = XposedCompat.hookMethod(AssetManager::class.java, "open", String::class.java, after = { p ->
             val name = p.args[0] as? String
-            if (name != null && name in JaLayoutRules.TARGET_PATHS && japaneseOn()) {
+            val profile = activeProfile()
+            if (name != null && profile != null && name in profile.targetLayoutPaths && profile.layoutPatches.isNotEmpty()) {
                 val original = p.result as? InputStream
                 if (original != null) {
                     val text = original.use { it.readBytes() }.toString(Charsets.UTF_8)
-                    val rewrite = JaLayoutRewriter.rewrite(text, JaLayoutRules.PATCHES)
-                    XposedCompat.log("WeTypeMulti", "ja layout $name: applied=${rewrite.applied.size} missing=${rewrite.missing}")
+                    val rewrite = LayoutRewriter.rewrite(text, profile.layoutPatches)
+                    XposedCompat.log("WeTypeMulti/layout", "patched layout $name for ${profile.id}: applied=${rewrite.applied.size} missing=${rewrite.missing}")
                     p.result = ByteArrayInputStream(rewrite.json.toByteArray(Charsets.UTF_8))
                 }
             }
@@ -65,16 +55,17 @@ object LayoutHooks {
     }
 
     /**
-     * Redraw the Chinese keyboard from a fresh read of the layout. Main thread only. The refresh method takes two
-     * callbacks, so they are passed as no-op proxies instead of null (safe whether or not a build checks for null).
+     * Redraw the keyboard view from a fresh read of the layout. Main thread only.
      */
     fun refresh() {
         val cl = loader ?: return
         val root = windowRoot?.invoke() ?: return
         val viewClass = runCatching { Class.forName(VIEW_CLASS, false, cl) }.getOrNull() ?: return
-        val chinese = findInstances(root, viewClass).firstOrNull { isChineseQwerty(it, cl) }
-        if (chinese == null) {
-            if (japaneseOn?.invoke() == true) XposedCompat.log("WeTypeMulti", "Chinese keyboard view not in the IME window; layout not refreshed")
+        val keyboard = findInstances(root, viewClass).firstOrNull { isChineseQwerty(it, cl) }
+        if (keyboard == null) {
+            if (activeProfile?.invoke() != null) {
+                XposedCompat.log("WeTypeMulti", "keyboard view not in the IME window; layout not refreshed")
+            }
             return
         }
         runCatching {
@@ -82,7 +73,7 @@ object LayoutHooks {
                 it.name in REFRESH_NAMES && it.parameterCount == 2 && it.returnType == Void.TYPE
             }
             m.isAccessible = true
-            m.invoke(chinese, *m.parameterTypes.map { noOp(it) }.toTypedArray())
+            m.invoke(keyboard, *m.parameterTypes.map { noOp(it) }.toTypedArray())
         }.onFailure { XposedCompat.log("WeTypeMulti", "keyboard refresh failed: $it") }
     }
 

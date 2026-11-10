@@ -2,8 +2,6 @@ package top.xiaojiang233.wetypemulti.xposed
 
 import top.xiaojiang233.wetypemulti.common.engine.CandidateLimits
 import top.xiaojiang233.wetypemulti.common.engine.Context
-import top.xiaojiang233.wetypemulti.common.layout.JaPunctuation
-import top.xiaojiang233.wetypemulti.common.romaji.JaPreedit
 
 /**
  * Hooks WeType 4.0.0's native-engine facade `com.tencent.wxhld.WxhldApi` (class and method names
@@ -40,7 +38,7 @@ class WxhldHooks(private val ctl: ImeController, private val cl: ClassLoader) {
         val api = runCatching { XposedCompat.findClass(apiName, cl) }.getOrNull() ?: return // not the :hld process
         log("WxhldApi found, installing")
         if (ctl.sink !is WxhldSink) ctl.sink = WxhldSink(ctl.sink) // never wrap twice
-        LayoutHooks.install({ ctl.active }, cl) { ctl.service?.window?.window?.decorView }
+        LayoutHooks.install({ if (ctl.active) ctl.currentProfile else null }, cl) { ctl.service?.window?.window?.decorView }
         MappingRuntime.load(cl, runCatching { ctl.service?.packageManager?.getPackageInfo("com.tencent.wetype", 0)?.longVersionCode }.getOrNull())
         hook(api, "SetWxhldEventListener", after = { listener = it.args[0] })
         hook(api, "onBatchEvent", before = { filterBatch(it) })
@@ -152,7 +150,7 @@ class WxhldHooks(private val ctl: ImeController, private val cl: ClassLoader) {
 
     /**
      * WeType's keyboard commits its text (key long presses and slide-ups included) through the input connection. While
-     * Japanese is on, a single character is rewritten to its Japanese form on the way out (see [JaPunctuation]). Our own
+     * a profile is active, a single character is rewritten to its localized form on the way out. Our own
      * commits pass through here too, and are unaffected because they are already Japanese.
      */
     private fun hookCommitText() {
@@ -164,7 +162,7 @@ class WxhldHooks(private val ctl: ImeController, private val cl: ClassLoader) {
         val n = XposedCompat.hookAllMethods(ric, "commitText", before = { p ->
             val text = p.args.getOrNull(0)?.toString()
             if (text != null && ctl.active && text.length == 1) {
-                val mapped = JaPunctuation.toJapanese(text)
+                val mapped = ctl.currentProfile.punctuationMapper.map(text)
                 if (mapped != text) p.newArgs = arrayOf<Any?>(mapped, p.args.getOrNull(1))
             }
         })
@@ -194,8 +192,8 @@ class WxhldHooks(private val ctl: ImeController, private val cl: ClassLoader) {
                 val pending = java.lang.reflect.Array.newInstance(piCls, if (composing) 1 else 0)
                 if (composing) {
                     val m = XposedCompat.newInstance(XposedCompat.findClass("com.tencent.wxhld.info.PendingExactlyMatch", cl)).also { fillDefaults(it, 0) }
-                    // The reading in kana, as Japanese IMEs show it, not Rime's spelling with a delimiter between syllables.
-                    XposedCompat.setObjectField(m, "match", JaPreedit.display(ctx!!.preedit))
+                    // The preedit formatting (e.g. kana display for Japanese, or raw for Latin).
+                    XposedCompat.setObjectField(m, "match", ctl.currentProfile.preeditFormatter.format(ctx!!.preedit))
                     java.lang.reflect.Array.set(pending, 0, m)
                 }
                 val pendingV2 = XposedCompat.newInstance(XposedCompat.findClass("com.tencent.wxhld.info.PendingInputV2", cl), pending, System.currentTimeMillis()).also { fillDefaults(it, 0) }

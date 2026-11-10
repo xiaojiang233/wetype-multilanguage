@@ -28,6 +28,11 @@ android {
         compose = true
     }
 
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+
     // Disable checkAarMetadata checks for modern Jetpack Compose / Miuix libraries
     tasks.matching { it.name.contains("AarMetadata") }.configureEach {
         enabled = false

@@ -21,7 +21,7 @@ data class LayoutRewrite(val json: String, val applied: List<String>, val missin
  * property as an array with one element per layout variant, for example `"floatText": ["“", "“", "“"]`.
  * A patch replaces every element and keeps the array length, so all variants change together.
  */
-object JaLayoutRewriter {
+object LayoutRewriter {
     private val gson = GsonBuilder().disableHtmlEscaping().create()
 
     fun rewrite(json: String, patches: List<KeyPatch>): LayoutRewrite {
@@ -54,6 +54,9 @@ object JaLayoutRewriter {
         else -> JsonPrimitive(value)
     }
 }
+
+/** Backward compatibility alias. */
+typealias JaLayoutRewriter = LayoutRewriter
 
 /** The Japanese changes applied to WeType's Chinese QWERTY layout while Japanese mode is on. */
 object JaLayoutRules {

@@ -1,13 +1,12 @@
 package top.xiaojiang233.wetypemulti.xposed
 
+import top.xiaojiang233.wetypemulti.common.keyboard.HostBaseLayout
+import top.xiaojiang233.wetypemulti.common.keyboard.KeyboardProfile
+import top.xiaojiang233.wetypemulti.common.keyboard.KeyboardProfileRegistry
+
 /**
- * The modes the globe key and Ctrl+Space cycle through: WeType's Chinese layout (中), its English
- * layout (英) and our Japanese romaji mode (あ). Japanese runs on WeType's Chinese QWERTY layout so the
- * letter keys reach `WxhldApi.process_input`.
- *
- * Every change goes through [set], so our mode ([ImeController.active]) and WeType's layout
- * ([KeyboardMenuHooks.switchLayout], `model.N.l3`) move together. Nothing here replays a tap on
- * WeType's keyboard.
+ * Manages switching between keyboard profiles (e.g. WeType Chinese/English, Japanese Romaji/12-Key,
+ * Korean, Russian) and coordinates with WeType's underlying layout.
  */
 object InputMode {
     enum class Mode(val id: String, val shortLabel: String) {
@@ -23,71 +22,78 @@ object InputMode {
         }
     }
 
-    /** WeType's Chinese layout id to return to after English or Japanese (remembered when we leave it). */
+    /** WeType's Chinese layout id to return to after English or non-host keyboards. */
     @Volatile private var cnLayout: Int? = null
 
-    /** Read from live state, so a layout change made by WeType itself shows up here as well. */
+    /** Read from live state. */
     fun current(ctl: ImeController): Mode {
-        if (ctl.active) return Mode.JA
+        if (ctl.active) {
+            return Mode.fromId(ctl.currentProfile.id) ?: Mode.JA
+        }
         val k = KeyboardMenuHooks.current ?: return Mode.CN
         return if (k.layoutId() == k.englishLayoutId()) Mode.EN else Mode.CN
     }
 
-    fun label(ctl: ImeController): String = when (current(ctl)) {
-        Mode.CN -> "中"
-        Mode.EN -> "英"
-        Mode.JA -> ctl.label
-        Mode.KANA12 -> "あ"
-        Mode.KO -> "한"
-        Mode.RU -> "РУ"
+    fun currentProfile(ctl: ImeController): KeyboardProfile {
+        if (ctl.active) return ctl.currentProfile
+        val k = KeyboardMenuHooks.current ?: return KeyboardProfileRegistry.ZH_CN
+        return if (k.layoutId() == k.englishLayoutId()) KeyboardProfileRegistry.EN_US else KeyboardProfileRegistry.ZH_CN
     }
 
-    /** One step of the cycle according to enabled keyboards list in config. Returns the new mode. */
-    fun cycle(ctl: ImeController): Mode {
-        val enabledList = runCatching {
-            val f = java.io.File(ctl.service?.filesDir ?: java.io.File("/data/data/com.tencent.wetype/files"), "config.json")
-            if (f.exists()) top.xiaojiang233.wetypemulti.common.config.MultiLanguageConfig.fromJson(f.readText()).enabledKeyboardIds else null
-        }.getOrNull() ?: listOf("zh_CN", "en_US", "ja_JP")
+    fun label(ctl: ImeController): String = currentProfile(ctl).shortLabel
 
-        val cycleModes = enabledList.mapNotNull { Mode.fromId(it) }.ifEmpty { listOf(Mode.CN, Mode.EN, Mode.JA) }
-        val cur = current(ctl)
-        val idx = cycleModes.indexOf(cur)
-        val next = if (idx == -1 || idx == cycleModes.lastIndex) cycleModes.first() else cycleModes[idx + 1]
+    /** One step of the cycle according to enabled keyboards list in config. Returns the new profile. */
+    fun cycle(ctl: ImeController): KeyboardProfile {
+        val enabledList = ConfigRepository.get().enabledKeyboardIds.ifEmpty { listOf("zh_CN", "en_US", "ja_JP") }
+        val cycleProfiles = enabledList.mapNotNull { KeyboardProfileRegistry.findById(it) }
+            .ifEmpty { listOf(KeyboardProfileRegistry.ZH_CN, KeyboardProfileRegistry.EN_US, KeyboardProfileRegistry.JA_JP) }
+
+        val cur = currentProfile(ctl)
+        val idx = cycleProfiles.indexOfFirst { it.id == cur.id }
+        val next = if (idx == -1 || idx == cycleProfiles.lastIndex) cycleProfiles.first() else cycleProfiles[idx + 1]
         set(ctl, next)
         return next
     }
 
-    /**
-     * Main thread only (touch, key or broadcast). Called without [ImeController]'s lock held, because
-     * WeType's layout switch can call back into our hooks.
-     */
-    fun set(ctl: ImeController, target: Mode) {
+    /** Set keyboard profile directly. */
+    fun set(ctl: ImeController, target: KeyboardProfile) {
         val k = KeyboardMenuHooks.current
-        if (k != null && current(ctl) == Mode.CN) k.layoutId()?.let { cnLayout = it }
-        when (target) {
-            Mode.CN -> {
-                ctl.deactivate()
-                if (k != null) k.switchLayout(cnLayout ?: k.chineseLayoutId())
+        if (k != null && currentProfile(ctl).id == KeyboardProfileRegistry.ZH_CN.id) {
+            k.layoutId()?.let { cnLayout = it }
+        }
+
+        when (target.hostLayout) {
+            HostBaseLayout.CHINESE_QWERTY -> {
+                if (target.isHostHandled) {
+                    ctl.deactivate()
+                    if (k != null) k.switchLayout(cnLayout ?: k.chineseLayoutId())
+                } else {
+                    ctl.activate(target)
+                    if (k != null) k.switchLayout(k.chineseLayoutId())
+                }
             }
-            Mode.EN -> {
+            HostBaseLayout.ENGLISH_QWERTY -> {
                 ctl.deactivate()
                 if (k != null) k.switchLayout(k.englishLayoutId())
             }
-            Mode.JA, Mode.KANA12 -> {
-                ctl.activate("ja")
-                if (k != null) k.switchLayout(k.chineseLayoutId())
-            }
-            Mode.KO -> {
-                ctl.activate("ko")
-                if (k != null) k.switchLayout(k.chineseLayoutId())
-            }
-            Mode.RU -> {
-                ctl.activate("ru")
-                if (k != null) k.switchLayout(k.chineseLayoutId())
+            HostBaseLayout.CHINESE_NINE_KEY -> {
+                if (target.isHostHandled) {
+                    ctl.deactivate()
+                    if (k != null) k.switchLayout(cnLayout ?: k.chineseLayoutId())
+                } else {
+                    ctl.activate(target)
+                    if (k != null) k.switchLayout(k.chineseLayoutId())
+                }
             }
         }
-        LayoutHooks.refresh() // redraw from the layout read for this mode (JSON rewrite on Japanese)
+        LayoutHooks.refresh()
         LanguageSwitcher.refresh()
-        XposedCompat.log("WeTypeMulti", "mode -> $target")
+        XposedCompat.log("WeTypeMulti", "keyboard profile -> ${target.id}")
+    }
+
+    /** Compatibility helper for setting by Mode enum. */
+    fun set(ctl: ImeController, target: Mode) {
+        val profile = KeyboardProfileRegistry.findById(target.id) ?: KeyboardProfileRegistry.ZH_CN
+        set(ctl, profile)
     }
 }
